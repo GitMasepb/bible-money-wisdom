@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bible &amp; Money Wisdom</title>
+<style>
+:root{--bg:#faf7f0;--card:#fff;--ink:#2b2620;--muted:#6f675c;--line:#d9d0bf;--accent:#8a5a1f;--node:#f1e6cf;--nodeon:#8a5a1f;--nodeonink:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#171410;--card:#221e18;--ink:#ece4d4;--muted:#a39a88;--line:#3a3328;--accent:#d9a45b;--node:#2d261b;--nodeon:#d9a45b;--nodeonink:#171410}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Georgia,"Times New Roman",serif}
+header{padding:28px 16px 8px;text-align:center}
+h1{margin:0;font-size:1.7rem}
+header p{margin:6px auto 0;max-width:620px;color:var(--muted);font-size:.95rem}
+main{max-width:1200px;margin:0 auto;padding:8px 16px 40px;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:820px){main{grid-template-columns:1fr}}
+svg{width:100%;height:auto;display:block}
+.spoke{stroke:var(--line);stroke-width:1.5}
+.hub circle{fill:var(--card);stroke:var(--accent);stroke-width:2}
+.hub text{fill:var(--ink);font:600 15px Georgia,serif;text-anchor:middle}
+.node{cursor:pointer;outline:none}
+.node rect{fill:var(--node);stroke:var(--line);stroke-width:1.5;transition:fill .15s}
+.node text{fill:var(--ink);font:600 12.5px Georgia,serif;text-anchor:middle;pointer-events:none}
+.node:hover rect,.node:focus rect{stroke:var(--accent)}
+.node.on rect{fill:var(--nodeon);stroke:var(--nodeon)}
+.node.on text{fill:var(--nodeonink)}
+#panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;min-height:200px}
+#panel h2{margin:0 0 2px;font-size:1.3rem}
+#panel .blurb{color:var(--muted);margin:0 0 14px;font-size:.95rem}
+.verse{border-top:1px solid var(--line);padding:12px 0}
+.verse:first-of-type{border-top:0}
+.ref{font-weight:700;color:var(--accent);font-size:.95rem}
+.ref a{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor}
+.vt{margin:4px 0 0}
+.pending{color:var(--muted);font-style:italic;font-size:.9rem;margin:4px 0 0}
+.empty{color:var(--muted)}
+footer{max-width:1100px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>Bible &amp; Money Wisdom</h1>
+  <p>Choose a theme to see what Scripture says about it as it relates to money and finances.</p>
+</header>
+<main>
+  <svg id="map" viewBox="0 0 800 660" role="group" aria-label="Topic diagram"></svg>
+  <section id="panel" aria-live="polite"><p class="empty">Select a topic on the diagram.</p></section>
+</main>
+<footer id="foot"></footer>
+<script src="verses.js"></script>
+<script>
+(function(){
+  const D = window.DATA, NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("map"), panel = document.getElementById("panel");
+  const cx = 400, cy = 330, RX = 310, RY = 270, W = 132, H = 36;
+  const el = (n, a, p) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+  const esvUrl = r => "https://www.esv.org/" + encodeURIComponent(r.replace(/ /g, "+")).replace(/%2B/g, "+") + "/";
+  const nodes = {};
+
+  D.topics.forEach((t, i) => {
+    const a = -Math.PI / 2 + i * 2 * Math.PI / D.topics.length;
+    t.x = cx + RX * Math.cos(a); t.y = cy + RY * Math.sin(a);
+    el("line", {class: "spoke", x1: cx, y1: cy, x2: t.x, y2: t.y}, svg);
+  });
+  const hub = el("g", {class: "hub"}, svg);
+  el("circle", {cx, cy, r: 62}, hub);
+  [["Money &", -6], ["Wisdom", 14]].forEach(([s, dy]) => { const x = el("text", {x: cx, y: cy + dy}, hub); x.innerHTML = s; });
+
+  D.topics.forEach(t => {
+    const g = el("g", {class: "node", tabindex: 0, role: "button", "aria-label": t.label}, svg);
+    el("rect", {x: t.x - W / 2, y: t.y - H / 2, width: W, height: H, rx: 19}, g);
+    const x = el("text", {x: t.x, y: t.y + 4.5}, g);
+    x.textContent = t.label.length > 20 ? t.label.replace(" & ", " & ") : t.label;
+    if (t.label.length > 18) x.setAttribute("font-size", "11.5");
+    const go = () => select(t.id);
+    g.addEventListener("click", go);
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    nodes[t.id] = g;
+  });
+
+  function select(id) {
+    const t = D.topics.find(x => x.id === id);
+    Object.entries(nodes).forEach(([k, g]) => g.classList.toggle("on", k === id));
+    panel.innerHTML = "";
+    const h = document.createElement("h2"); h.textContent = t.label; panel.appendChild(h);
+    const b = document.createElement("p"); b.className = "blurb"; b.textContent = t.blurb; panel.appendChild(b);
+    t.refs.forEach(r => {
+      const d = document.createElement("div"); d.className = "verse";
+      const rf = document.createElement("div"); rf.className = "ref";
+      const a = document.createElement("a"); a.href = esvUrl(r); a.target = "_blank"; a.rel = "noopener"; a.textContent = r + " (ESV)";
+      rf.appendChild(a); d.appendChild(rf);
+      const p = document.createElement("p");
+      if (D.texts[r]) { p.className = "vt"; p.textContent = D.texts[r]; }
+      else { p.className = "pending"; p.textContent = "Open the reference to read the passage."; }
+      d.appendChild(p); panel.appendChild(d);
+    });
+    history.replaceState(null, "", "#" + id);
+  }
+
+  const hasText = Object.keys(D.texts).length > 0;
+  document.getElementById("foot").textContent = hasText
+    ? "Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved."
+    : "Verse text not yet loaded. Run build_verses.py with an ESV API key to add the ESV text. Links open the passage on esv.org (© Crossway).";
+  const start = location.hash.slice(1);
+  if (D.topics.some(t => t.id === start)) select(start);
+})();
+</script>
+</body>
+</html>
